@@ -5,10 +5,10 @@ declare namespace google {
       withFailureHandler(callback: (error: Error) => void): Runner;
       getWishes(): void;
       getUserVotedThemes(): void;
-      addNewWish(wish: { title: string; desc: string }): void;
-      addVote(id: number): void;
+      addNewWish(wish: { id: string; title: string; desc: string }): void;
+      addVote(id: string): void;
       updateWish(wish: any): void;
-      deleteWish(id: number): void;
+      deleteWish(id: string): void;
     }
     const run: Runner;
   }

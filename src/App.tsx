@@ -3,7 +3,7 @@ import { useState, useEffect } from 'react';
 import confetti from 'canvas-confetti';
 
 interface Wish {
-  id: number;
+  id: string;
   votes: number;
   title: string;
   desc: string;
@@ -29,7 +29,7 @@ const Toast = ({ msg, type }: ToastState) => (
 function App() {
 
   const [wishes, setWishes] = useState<Wish[]>([]);
-  const [votedIds, setVotedIds] = useState<Set<number>>(new Set());
+  const [votedIds, setVotedIds] = useState<Set<string>>(new Set());
   const [deleteTarget, setDeleteTarget] = useState<Wish | null>(null);
   const [editingWish, setEditingWish] = useState<Wish | null>(null);
   const [loading, setLoading] = useState(true);
@@ -64,35 +64,47 @@ function App() {
   };
 
   // 1. 新增主題 (樂觀更新)
-  const handleAddWish = () => {
-    if (!newWish.title) return showToast('標題不能空白', 'error');
+  const handleAddWish = (title: string, desc: string) => {
+    const uuid = crypto.randomUUID(); // 產生唯一 ID
 
-    const tempId = Date.now();
-    const optimisticWish = {
-      ...newWish,
-      id: tempId,
-      votes: 0,
-      isOwner: true,
-      isTemp: true,
+    const newWishData: Wish = {
+      id: uuid,
+      title,
+      desc,
+      votes: 1,       // 🔥 關鍵點：這裡直接給 1，畫面上就會立刻顯示 1 票
+      isOwner: true,  // 自己發的，當然是 Owner
+      isTemp: true    // 標記為處理中，可以加個轉圈圈或半透明效果
     };
 
-    setWishes([optimisticWish, ...wishes]); // 先在 UI 顯示
-    setNewWish({ title: '', desc: '' });
+    // 1. 立即更新列表 (Optimistic Update)
+    setWishes(prev => [newWishData, ...prev]);
 
+    // 2. 立即標記為「已投票」，這樣按鈕會立刻變色且無法再點
+    setVotedIds(prev => new Set(prev).add(uuid));
+
+    // 3. 呼叫後端 API
     google.script.run
       .withSuccessHandler(() => {
-        showToast('許願成功');
-        loadData(); // 成功後重新抓取真實 ID
+        // 成功後，把 isTemp 標記拿掉即可，票數維持 1
+        setWishes(prev =>
+          prev.map(w => w.id === uuid ? { ...w, isTemp: false } : w)
+        );
       })
       .withFailureHandler((err) => {
-        setWishes((prev) => prev.filter((w) => w.id !== tempId));
-        showToast(err.message, 'error');
+        // 失敗才把這個假願望從畫面上移除，並退回投票狀態
+        setWishes(prev => prev.filter(w => w.id !== uuid));
+        setVotedIds(prev => {
+          const next = new Set(prev);
+          next.delete(uuid);
+          return next;
+        });
+        showToast("發生錯誤：" + err.message, "error");
       })
-      .addNewWish(newWish);
+      .addNewWish({ id: uuid, title, desc });
   };
 
   // 2. 投票 (樂觀更新)
-  const handleVote = (id: number) => {
+  const handleVote = (id: string) => {
     if (votedIds.has(id)) return;
 
     const previousWishes = [...wishes];
@@ -124,7 +136,7 @@ function App() {
   // 3. 更新主題 (樂觀更新)
   const handleUpdate = () => {
     if (!editingWish) return;
-    
+
     const previousWishes = [...wishes];
     setWishes((prev) =>
       prev.map((w) => (w.id === editingWish.id ? editingWish : w))
@@ -143,7 +155,7 @@ function App() {
   // 4. 刪除主題 (樂觀更新)
   const executeDelete = () => {
     if (!deleteTarget) return;
-    
+
     const { id } = deleteTarget;
     const previousWishes = [...wishes];
     setWishes((prev) => prev.filter((w) => w.id !== id));
@@ -194,7 +206,7 @@ function App() {
             />
           </div>
           <button
-            onClick={handleAddWish}
+            onClick={() => handleAddWish(newWish.title, newWish.desc)}
             className="bg-gradient-to-r from-indigo-600 to-purple-600 px-8 py-2 rounded-lg font-bold hover:scale-105 active:scale-95 transition-all text-sm h-auto sm:h-20"
           >
             許願

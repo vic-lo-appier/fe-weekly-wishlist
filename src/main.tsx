@@ -4,7 +4,7 @@ import App from './App';
 import './index.css'; // 確保有引入 Tailwind
 
 interface Wish {
-  id: number;
+  id: string;
   votes: number;
   title: string;
   desc: string;
@@ -13,10 +13,10 @@ interface Wish {
 
 type MockFunctionMap = {
   getWishes: (success: (data: Wish[]) => void) => void;
-  getUserVotedThemes: (success: (ids: number[]) => void) => void;
-  addNewWish: (data: { title: string; desc: string }, success: (message: string) => void) => void;
-  addVote: (id: number, success: (message: string) => void) => void;
-  deleteWish: (success: (message: string) => void, id: number) => void;
+  getUserVotedThemes: (success: (ids: string[]) => void) => void;
+  addNewWish: (data: { id: string; title: string; desc: string }, success: (message: string) => void) => void;
+  addVote: (id: string, success: (message: string) => void) => void;
+  deleteWish: (success: (message: string) => void, id: string) => void;
   updateWish: (data: Wish, success: (message: string) => void) => void;
 };
 
@@ -28,14 +28,14 @@ if (typeof google === 'undefined') {
       console.log('Mock: getWishes');
       success([
         {
-          id: 2,
+          id: '2',
           votes: 10,
           title: 'React 19 樂觀更新',
           desc: '這就是你現在看到的',
           isOwner: true,
         },
         {
-          id: 3,
+          id: '3',
           votes: 5,
           title: 'Tailwind v4 實戰',
           desc: '真的很簡潔',
@@ -43,19 +43,19 @@ if (typeof google === 'undefined') {
         },
       ]);
     },
-    getUserVotedThemes: (success: (ids: number[]) => void) => {
+    getUserVotedThemes: (success: (ids: string[]) => void) => {
       console.log('Mock: getUserVotedThemes');
-      success([2]);
+      success(['2']);
     },
-    addNewWish: (data: { title: string; desc: string }, success: (message: string) => void) => {
+    addNewWish: (data: { id: string; title: string; desc: string }, success: (message: string) => void) => {
       console.log('Mock: Add', data);
       success('許願成功');
     },
-    addVote: (id: number, success: (message: string) => void) => {
+    addVote: (id: string, success: (message: string) => void) => {
       console.log('Mock: Vote', id);
       success('投票成功');
     },
-    deleteWish: (success: (message: string) => void, id: number) => {
+    deleteWish: (success: (message: string) => void, id: string) => {
       console.log('Mock: Delete requested for ID', id);
       setTimeout(() => success('刪除成功'), 500); // 模擬一點點延遲更有感
     },
@@ -82,17 +82,17 @@ if (typeof google === 'undefined') {
           mockFunctions.getUserVotedThemes(successHandler);
         }
       },
-      addNewWish: (wish: { title: string; desc: string }) => {
+      addNewWish: (wish: { id: string; title: string; desc: string }) => {
         if (successHandler) {
           mockFunctions.addNewWish(wish, successHandler);
         }
       },
-      addVote: (id: number) => {
+      addVote: (id: string) => {
         if (successHandler) {
           mockFunctions.addVote(id, successHandler);
         }
       },
-      deleteWish: (id: number) => {
+      deleteWish: (id: string) => {
         if (successHandler) {
           mockFunctions.deleteWish(successHandler, id);
         }

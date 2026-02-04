@@ -52,41 +52,41 @@ function updateWish(updateData) {
 }
 
 /**
- * 新增主題：對應 A, B, C, D 欄
+ * 新增時存入 UUID
  */
-function addNewWish(newWish) {
-  const sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(WISH_SHEET_NAME);
+function addNewWish(payload) {
+  const sheet = SpreadsheetApp.getActive().getSheetByName("💡 主題願望清單");
   const userEmail = Session.getActiveUser().getEmail();
   
-  // 寫入：A(0票), B(標題), C(描述), D(推薦者)
-  sheet.appendRow([0, newWish.title, newWish.desc, userEmail]);
-  
-  return "許願成功！";
+  // 欄位規劃：A:票數, B:標題, C:描述, D:Email, E:UUID
+  sheet.appendRow([
+    1, 
+    payload.title, 
+    payload.desc, 
+    userEmail, 
+    payload.id // 存入前端生成的 UUID
+  ]);
+  return "OK";
 }
 
 /**
- * 投票功能：更新 A 欄
+ * 透過 UUID 找到對應的列進行操作
  */
-function addVote(wishId) {
-  const userEmail = Session.getActiveUser().getEmail();
-  const ss = SpreadsheetApp.getActiveSpreadsheet();
-  let logSheet = ss.getSheetByName(LOG_SHEET_NAME);
-  
-  // 檢查是否投過
-  const logData = logSheet.getDataRange().getValues();
-  if (logData.some(row => row[0] === userEmail && row[1] === wishId)) {
-    throw new Error("你已經投過囉！");
+function findRowById(sheet, id) {
+  const data = sheet.getDataRange().getValues();
+  // 假設 UUID 存在第 E 欄 (index 為 4)
+  for (let i = 1; i < data.length; i++) {
+    if (data[i][4] === id) return i + 1; // 回傳真正的列號
   }
+  throw new Error("找不到該項目");
+}
 
-  // 1. 紀錄投票
-  logSheet.appendRow([userEmail, wishId, new Date()]);
-
-  // 2. 更新票數 (A 欄是第 1 欄)
-  const wishSheet = ss.getSheetByName(WISH_SHEET_NAME);
-  const voteRange = wishSheet.getRange(wishId, 1); 
-  voteRange.setValue((voteRange.getValue() || 0) + 1);
-  
-  return "投票成功！";
+function addVote(id) {
+  const sheet = SpreadsheetApp.getActive().getSheetByName("💡 主題願望清單");
+  const row = findRowById(sheet, id);
+  const cell = sheet.getRange(row, 1);
+  cell.setValue(cell.getValue() + 1);
+  return "OK";
 }
 
 /**
