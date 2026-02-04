@@ -1,0 +1,20 @@
+# 依賴套件
+node_modules/
+
+# 編譯產物
+dist/
+
+# clasp 私密設定 (內含 Script ID，絕對不能上傳)
+.clasp.json
+
+# clasp 登入憑證 (內含你的 Google 帳號授權，絕對不能上傳)
+.clasprc.json
+
+# 環境變數與日誌
+.env
+*.log
+npm-debug.log*
+
+# 編輯器設定
+.vscode/
+.idea/
