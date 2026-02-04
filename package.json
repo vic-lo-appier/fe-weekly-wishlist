@@ -8,7 +8,6 @@
     "build": "vite build && cp src/server/* dist/",
     "push": "npm run build && clasp push",
     "lint": "eslint .",
-    "preview": "vite preview",
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
