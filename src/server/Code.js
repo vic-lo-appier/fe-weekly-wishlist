@@ -90,25 +90,52 @@ function addVote(id) {
 }
 
 /**
- * 刪除許願主題
- * @param {number} wishId - 試算表中的列號
+ * 刪除許願主題（支援 UUID 與 跨表清理）
+ * @param {string} id - 前端傳入的 UUID
  */
-function deleteWish(wishId) {
-  const sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(WISH_SHEET_NAME);
+function deleteWish(id) {
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  const wishSheet = ss.getSheetByName(WISH_SHEET_NAME);
+  const logSheet = ss.getSheetByName("投票紀錄"); // 確保這裡名稱對應你的 Tab
   const userEmail = Session.getActiveUser().getEmail();
   
-  // 1. 取得該列的推薦者 Email (D 欄是第 4 欄)
-  const creatorEmail = sheet.getRange(wishId, 4).getValue();
-  
-  // 2. 權限檢查：只有提案人或是管理員(你)可以刪除
+  // 1. 透過 UUID 尋找該提案在第幾列
+  const data = wishSheet.getDataRange().getValues();
+  let rowIndex = -1;
+  let creatorEmail = "";
+
+  // 假設你的欄位是：A:票數, B:標題, C:描述, D:Email, E:UUID (Index 4)
+  for (let i = 1; i < data.length; i++) {
+    if (data[i][4] === id) { 
+      rowIndex = i + 1;
+      creatorEmail = data[i][3]; // D 欄 (Email)
+      break;
+    }
+  }
+
+  if (rowIndex === -1) throw new Error("找不到該提案，可能已被刪除。");
+
+  // 2. 權限檢查
   if (userEmail !== creatorEmail && userEmail !== ADMIN_EMAIL) {
-    throw new Error("抱歉，只有提案人可以刪除此內容。");
+    throw new Error("抱歉，只有提案人或管理員可以刪除。");
   }
   
-  // 3. 執行刪除列
-  sheet.deleteRow(wishId);
+  // 3. 執行刪除主表提案
+  wishSheet.deleteRow(rowIndex);
   
-  return "提案已成功刪除。";
+  // 4. 同步清理「投票紀錄」表
+  if (logSheet) {
+    const logData = logSheet.getDataRange().getValues();
+    // 從後往前刪除，避免 Index 位移
+    for (let j = logData.length - 1; j >= 1; j--) {
+      // 假設投票紀錄表的 UUID 存在 B 欄 (Index 1)
+      if (logData[j][1] === id) {
+        logSheet.deleteRow(j + 1);
+      }
+    }
+  }
+  
+  return "提案及其相關紀錄已成功刪除。";
 }
 
 function getUserVotedThemes() {

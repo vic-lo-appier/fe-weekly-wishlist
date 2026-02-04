@@ -89,6 +89,8 @@ function App() {
         setWishes(prev =>
           prev.map(w => w.id === uuid ? { ...w, isTemp: false } : w)
         );
+        showToast('許願成功 🎉');
+        setNewWish({ title: '', desc: '' });
       })
       .withFailureHandler((err) => {
         // 失敗才把這個假願望從畫面上移除，並退回投票狀態
