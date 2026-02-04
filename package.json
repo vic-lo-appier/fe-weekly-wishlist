@@ -7,7 +7,6 @@
     "dev": "vite",
     "build": "vite build && cp src/server/* dist/",
     "push": "npm run build && clasp push",
-    "lint": "eslint .",
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
