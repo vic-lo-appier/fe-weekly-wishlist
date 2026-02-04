@@ -1,0 +1,36 @@
+name: Deploy to Google Apps Script
+
+on:
+  push:
+    branches:
+      - main  # 只有推送到 main 分支時觸發
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/checkout@v4
+        with:
+          node-version: '20'
+
+      - name: Install Dependencies
+        run: npm install
+
+      - name: Build React App
+        run: npm run build
+
+      - name: Setup clasp
+        run: |
+          npm install -g @google/clasp
+          echo '${{ secrets.CLASPRC_JSON }}' > ~/.clasprc.json
+
+      - name: Push to Apps Script
+        run: |
+          # 這裡動態建立 .clasp.json 確保 ID 正確
+          echo '{"scriptId":"${{ secrets.SCRIPT_ID }}","rootDir":"dist"}' > .clasp.json
+          clasp push -f
