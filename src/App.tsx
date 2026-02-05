@@ -36,6 +36,7 @@ function App() {
   const [toast, setToast] = useState<ToastState | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [newWish, setNewWish] = useState({ title: '', desc: '' });
+  const [isSubmitting, setIsSubmitting] = useState(false);
   // 顯示提示訊息
   const showToast = (msg: string, type: 'success' | 'error' = 'success') => {
     setToast({ msg, type });
@@ -65,6 +66,13 @@ function App() {
 
   // 1. 新增主題 (樂觀更新)
   const handleAddWish = (title: string, desc: string) => {
+    // 防止連點
+    if (isSubmitting || !title.trim()) return;
+
+    setIsSubmitting(true);
+    // 立即清空輸入欄位
+    setNewWish({ title: '', desc: '' });
+
     const uuid = crypto.randomUUID(); // 產生唯一 ID
 
     const newWishData: Wish = {
@@ -90,7 +98,7 @@ function App() {
           prev.map(w => w.id === uuid ? { ...w, isTemp: false } : w)
         );
         showToast('許願成功 🎉');
-        setNewWish({ title: '', desc: '' });
+        setIsSubmitting(false);
       })
       .withFailureHandler((err) => {
         // 失敗才把這個假願望從畫面上移除，並退回投票狀態
@@ -101,6 +109,7 @@ function App() {
           return next;
         });
         showToast("發生錯誤：" + err.message, "error");
+        setIsSubmitting(false);
       })
       .addNewWish({ id: uuid, title, desc });
   };
@@ -209,9 +218,14 @@ function App() {
           </div>
           <button
             onClick={() => handleAddWish(newWish.title, newWish.desc)}
-            className="bg-gradient-to-r from-indigo-600 to-purple-600 px-8 py-2 rounded-lg font-bold hover:scale-105 active:scale-95 transition-all text-sm h-auto sm:h-20"
+            disabled={isSubmitting || !newWish.title.trim()}
+            className={`px-8 py-2 rounded-lg font-bold transition-all text-sm h-auto sm:h-20 ${
+              isSubmitting || !newWish.title.trim()
+                ? 'bg-slate-700 text-slate-500 cursor-not-allowed'
+                : 'bg-gradient-to-r from-indigo-600 to-purple-600 hover:scale-105 active:scale-95'
+            }`}
           >
-            許願
+            {isSubmitting ? '許願中...' : '許願'}
           </button>
         </div>
       </section>
@@ -223,17 +237,19 @@ function App() {
           .map((wish) => (
             <div
               key={wish.id}
-              className="flex items-center p-4 hover:bg-white/5 transition-colors gap-4"
+              className={`flex items-center p-4 hover:bg-white/5 transition-colors gap-4 ${
+                wish.isTemp ? 'opacity-60 animate-pulse' : ''
+              }`}
             >
               <div className="w-14 text-center border-r border-white/10 pr-2 shrink-0">
                 <span
                   className={`block text-xl font-black ${votedIds.has(wish.id) ? 'text-indigo-400' : 'text-slate-500'
                     }`}
                 >
-                  {wish.votes}
+                  {wish.isTemp ? '⏳' : wish.votes}
                 </span>
                 <span className="text-[9px] uppercase tracking-tighter text-slate-600">
-                  Votes
+                  {wish.isTemp ? '處理中' : 'Votes'}
                 </span>
               </div>
 
@@ -242,7 +258,12 @@ function App() {
                   <h3 className="font-bold text-slate-200 truncate text-sm">
                     {wish.title}
                   </h3>
-                  {wish.isOwner && (
+                  {wish.isTemp && (
+                    <span className="text-[10px] text-yellow-400 bg-yellow-400/10 px-2 py-0.5 rounded-full">
+                      送出中...
+                    </span>
+                  )}
+                  {wish.isOwner && !wish.isTemp && (
                     <div className="flex gap-1">
                       <button
                         onClick={() => {
@@ -273,12 +294,12 @@ function App() {
                 onClick={() => handleVote(wish.id)}
                 disabled={votedIds.has(wish.id) || wish.isTemp}
                 className={`flex items-center gap-2 px-4 py-2 rounded-lg text-xs font-bold transition-all shrink-0
-                ${votedIds.has(wish.id)
+                ${votedIds.has(wish.id) || wish.isTemp
                     ? 'bg-slate-800 text-slate-600 cursor-not-allowed'
                     : 'bg-indigo-600 hover:bg-indigo-500 text-white shadow-lg shadow-indigo-500/20'
                   }`}
               >
-                {votedIds.has(wish.id) ? '已推' : '推一波'}
+                {wish.isTemp ? '處理中' : votedIds.has(wish.id) ? '已推' : '推一波'}
               </button>
             </div>
           ))}
