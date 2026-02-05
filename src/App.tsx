@@ -189,7 +189,7 @@ function App() {
             FE Weekly <span className="text-white">許願池</span>
           </h1>
           <p className="text-slate-500 text-sm mt-1">
-            Real-time React SPA on Google Apps Script
+            提出你想聽的分享主題，一起投票決定！
           </p>
         </div>
         {loading && (
