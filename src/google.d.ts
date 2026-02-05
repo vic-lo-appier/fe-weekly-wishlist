@@ -9,6 +9,7 @@ declare namespace google {
       addVote(id: string): void;
       updateWish(wish: any): void;
       deleteWish(id: string): void;
+      isAdmin(): void;
     }
     const run: Runner;
   }

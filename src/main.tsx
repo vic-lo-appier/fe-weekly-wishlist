@@ -18,6 +18,7 @@ type MockFunctionMap = {
   addVote: (id: string, success: (message: string) => void) => void;
   deleteWish: (success: (message: string) => void, id: string) => void;
   updateWish: (data: Wish, success: (message: string) => void) => void;
+  isAdmin: (success: (isAdmin: boolean) => void) => void;
 };
 
 /** * Mock Google API for local development
@@ -63,6 +64,10 @@ if (typeof google === 'undefined') {
       console.log('Mock: Update', data);
       success('更新成功');
     },
+    isAdmin: (success: (isAdmin: boolean) => void) => {
+      console.log('Mock: isAdmin');
+      success(true); // 本地開發預設為 Admin
+    },
   };
 
   const createProxy = (
@@ -100,6 +105,11 @@ if (typeof google === 'undefined') {
       updateWish: (wish: any) => {
         if (successHandler) {
           mockFunctions.updateWish(wish, successHandler);
+        }
+      },
+      isAdmin: () => {
+        if (successHandler) {
+          mockFunctions.isAdmin(successHandler);
         }
       },
     };

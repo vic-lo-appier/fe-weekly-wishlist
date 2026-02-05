@@ -177,3 +177,11 @@ function getUserVotedThemes() {
     .filter((row) => row[0] === userEmail)
     .map((row) => row[1]);
 }
+
+/**
+ * 檢查當前使用者是否為 Admin
+ */
+function isAdmin() {
+  const userEmail = Session.getActiveUser().getEmail();
+  return userEmail === ADMIN_EMAIL;
+}

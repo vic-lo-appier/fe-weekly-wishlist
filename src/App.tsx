@@ -37,6 +37,10 @@ function App() {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [newWish, setNewWish] = useState({ title: '', desc: '' });
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [deletingIds, setDeletingIds] = useState<Set<string>>(new Set());
+  const [votingIds, setVotingIds] = useState<Set<string>>(new Set());
+  const [isSaving, setIsSaving] = useState(false);
+  const [isAdmin, setIsAdmin] = useState(false);
   // 顯示提示訊息
   const showToast = (msg: string, type: 'success' | 'error' = 'success') => {
     setToast({ msg, type });
@@ -50,18 +54,23 @@ function App() {
 
   const loadData = () => {
     setLoading(true);
-    // GAS 呼叫流程：獲取投票紀錄 -> 獲取主題
+    // GAS 呼叫流程：檢查 Admin -> 獲取投票紀錄 -> 獲取主題
     google.script.run
-      .withSuccessHandler((ids) => {
-        setVotedIds(new Set(ids));
+      .withSuccessHandler((adminStatus) => {
+        setIsAdmin(adminStatus);
         google.script.run
-          .withSuccessHandler((data) => {
-            setWishes(data);
-            setLoading(false);
+          .withSuccessHandler((ids) => {
+            setVotedIds(new Set(ids));
+            google.script.run
+              .withSuccessHandler((data) => {
+                setWishes(data);
+                setLoading(false);
+              })
+              .getWishes();
           })
-          .getWishes();
+          .getUserVotedThemes();
       })
-      .getUserVotedThemes();
+      .isAdmin();
   };
 
   // 1. 新增主題 (樂觀更新)
@@ -116,16 +125,24 @@ function App() {
 
   // 2. 投票 (樂觀更新)
   const handleVote = (id: string) => {
-    if (votedIds.has(id)) return;
+    // Admin 可以無限投票，一般使用者只能投一次
+    if (!isAdmin && votedIds.has(id)) return;
+    // 防止連點
+    if (votingIds.has(id)) return;
 
     const previousWishes = [...wishes];
     const previousVoted = new Set(votedIds);
+
+    // 標記為投票中
+    setVotingIds((prev) => new Set(prev).add(id));
 
     // 立即更新 UI
     setWishes((prev) =>
       prev.map((w) => (w.id === id ? { ...w, votes: (w.votes || 0) + 1 } : w))
     );
-    setVotedIds((prev) => new Set(prev).add(id));
+    if (!isAdmin) {
+      setVotedIds((prev) => new Set(prev).add(id));
+    }
     confetti({
       particleCount: 100,
       spread: 70,
@@ -134,9 +151,19 @@ function App() {
     });
     google.script.run
       .withSuccessHandler(() => {
-        showToast('投票成功');
+        setVotingIds((prev) => {
+          const next = new Set(prev);
+          next.delete(id);
+          return next;
+        });
+        showToast(isAdmin ? '(Admin) 投票成功' : '投票成功');
       })
       .withFailureHandler((err) => {
+        setVotingIds((prev) => {
+          const next = new Set(prev);
+          next.delete(id);
+          return next;
+        });
         setWishes(previousWishes);
         setVotedIds(previousVoted);
         showToast(err.message, 'error');
@@ -146,17 +173,23 @@ function App() {
 
   // 3. 更新主題 (樂觀更新)
   const handleUpdate = () => {
-    if (!editingWish) return;
+    if (!editingWish || isSaving) return;
 
+    setIsSaving(true);
     const previousWishes = [...wishes];
     setWishes((prev) =>
       prev.map((w) => (w.id === editingWish.id ? editingWish : w))
     );
-    setIsModalOpen(false);
 
     google.script.run
-      .withSuccessHandler(() => showToast('更新成功'))
+      .withSuccessHandler(() => {
+        setIsSaving(false);
+        setIsModalOpen(false);
+        setEditingWish(null);
+        showToast('更新成功');
+      })
       .withFailureHandler((err) => {
+        setIsSaving(false);
         setWishes(previousWishes);
         showToast(err.message, 'error');
       })
@@ -168,14 +201,28 @@ function App() {
     if (!deleteTarget) return;
 
     const { id } = deleteTarget;
-    const previousWishes = [...wishes];
-    setWishes((prev) => prev.filter((w) => w.id !== id));
+    // 標記為刪除中
+    setDeletingIds((prev) => new Set(prev).add(id));
     setDeleteTarget(null); // 關閉彈窗
 
     google.script.run
-      .withSuccessHandler(() => showToast('已成功刪除提案'))
+      .withSuccessHandler(() => {
+        // 成功後才真正移除
+        setWishes((prev) => prev.filter((w) => w.id !== id));
+        setDeletingIds((prev) => {
+          const next = new Set(prev);
+          next.delete(id);
+          return next;
+        });
+        showToast('已成功刪除提案');
+      })
       .withFailureHandler((err) => {
-        setWishes(previousWishes);
+        // 失敗則取消刪除中狀態
+        setDeletingIds((prev) => {
+          const next = new Set(prev);
+          next.delete(id);
+          return next;
+        });
         showToast(err.message, 'error');
       })
       .deleteWish(id);
@@ -192,9 +239,16 @@ function App() {
             提出你想聽的分享主題，一起投票決定！
           </p>
         </div>
-        {loading && (
-          <div className="text-xs text-indigo-400 animate-pulse">同步中...</div>
-        )}
+        <div className="flex flex-col items-end gap-1">
+          {isAdmin && (
+            <span className="text-[10px] text-amber-400 bg-amber-400/10 px-2 py-0.5 rounded-full">
+              🔧 Admin Mode
+            </span>
+          )}
+          {loading && (
+            <div className="text-xs text-indigo-400 animate-pulse">同步中...</div>
+          )}
+        </div>
       </header>
 
       {/* 新增區塊 */}
@@ -234,75 +288,93 @@ function App() {
       <section className="bg-white/5 backdrop-blur-md border border-white/10 rounded-2xl overflow-hidden divide-y divide-white/5">
         {wishes
           .sort((a, b) => b.votes - a.votes)
-          .map((wish) => (
-            <div
-              key={wish.id}
-              className={`flex items-center p-4 hover:bg-white/5 transition-colors gap-4 ${
-                wish.isTemp ? 'opacity-60 animate-pulse' : ''
-              }`}
-            >
-              <div className="w-14 text-center border-r border-white/10 pr-2 shrink-0">
-                <span
-                  className={`block text-xl font-black ${votedIds.has(wish.id) ? 'text-indigo-400' : 'text-slate-500'
+          .map((wish) => {
+            const isDeleting = deletingIds.has(wish.id);
+            const isVoting = votingIds.has(wish.id);
+            const isProcessing = wish.isTemp || isDeleting;
+
+            return (
+              <div
+                key={wish.id}
+                className={`flex items-center p-4 hover:bg-white/5 transition-colors gap-4 ${
+                  wish.isTemp ? 'opacity-60 animate-pulse' : ''
+                } ${isDeleting ? 'opacity-50 bg-red-500/5 animate-pulse' : ''}`}
+              >
+                <div className="w-14 text-center border-r border-white/10 pr-2 shrink-0">
+                  <span
+                    className={`block text-xl font-black ${
+                      isDeleting
+                        ? 'text-red-400'
+                        : votedIds.has(wish.id)
+                          ? 'text-indigo-400'
+                          : 'text-slate-500'
+                    }`}
+                  >
+                    {isDeleting ? '🗑️' : wish.isTemp ? '⏳' : wish.votes}
+                  </span>
+                  <span className="text-[9px] uppercase tracking-tighter text-slate-600">
+                    {isDeleting ? '刪除中' : wish.isTemp ? '處理中' : 'Votes'}
+                  </span>
+                </div>
+
+                <div className="flex-grow min-w-0">
+                  <div className="flex items-center gap-2">
+                    <h3 className={`font-bold truncate text-sm ${isDeleting ? 'text-slate-400 line-through' : 'text-slate-200'}`}>
+                      {wish.title}
+                    </h3>
+                    {wish.isTemp && (
+                      <span className="text-[10px] text-yellow-400 bg-yellow-400/10 px-2 py-0.5 rounded-full">
+                        送出中...
+                      </span>
+                    )}
+                    {isDeleting && (
+                      <span className="text-[10px] text-red-400 bg-red-400/10 px-2 py-0.5 rounded-full">
+                        刪除中...
+                      </span>
+                    )}
+                    {wish.isOwner && !isProcessing && (
+                      <div className="flex gap-1">
+                        <button
+                          onClick={() => {
+                            setEditingWish(wish);
+                            setIsModalOpen(true);
+                          }}
+                          className="p-1 text-slate-500 hover:text-yellow-400 transition-colors"
+                        >
+                          ✎
+                        </button>
+                        <button
+                          onClick={() =>
+                            setDeleteTarget(wish)
+                          }
+                          className="p-1 text-slate-500 hover:text-red-400 transition-colors"
+                        >
+                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                          </svg>
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                  <p className="text-[11px] text-slate-500 truncate">
+                    {wish.desc || '無描述'}
+                  </p>
+                </div>
+
+                <button
+                  onClick={() => handleVote(wish.id)}
+                  disabled={(!isAdmin && votedIds.has(wish.id)) || isProcessing || isVoting}
+                  className={`flex items-center gap-2 px-4 py-2 rounded-lg text-xs font-bold transition-all shrink-0
+                  ${isProcessing || isVoting || (!isAdmin && votedIds.has(wish.id))
+                      ? 'bg-slate-800 text-slate-600 cursor-not-allowed'
+                      : 'bg-indigo-600 hover:bg-indigo-500 text-white shadow-lg shadow-indigo-500/20'
                     }`}
                 >
-                  {wish.isTemp ? '⏳' : wish.votes}
-                </span>
-                <span className="text-[9px] uppercase tracking-tighter text-slate-600">
-                  {wish.isTemp ? '處理中' : 'Votes'}
-                </span>
+                  {isDeleting ? '刪除中' : wish.isTemp ? '處理中' : isVoting ? '投票中...' : (!isAdmin && votedIds.has(wish.id)) ? '已推' : '推一波'}
+                </button>
               </div>
-
-              <div className="flex-grow min-w-0">
-                <div className="flex items-center gap-2">
-                  <h3 className="font-bold text-slate-200 truncate text-sm">
-                    {wish.title}
-                  </h3>
-                  {wish.isTemp && (
-                    <span className="text-[10px] text-yellow-400 bg-yellow-400/10 px-2 py-0.5 rounded-full">
-                      送出中...
-                    </span>
-                  )}
-                  {wish.isOwner && !wish.isTemp && (
-                    <div className="flex gap-1">
-                      <button
-                        onClick={() => {
-                          setEditingWish(wish);
-                          setIsModalOpen(true);
-                        }}
-                        className="p-1 text-slate-500 hover:text-yellow-400 transition-colors"
-                      >
-                        ✎
-                      </button>
-                      <button
-                        onClick={() =>
-                          setDeleteTarget(wish)
-                        }
-                        className="p-1 text-slate-500 hover:text-red-400 transition-colors"
-                      >
-                        ✕
-                      </button>
-                    </div>
-                  )}
-                </div>
-                <p className="text-[11px] text-slate-500 truncate">
-                  {wish.desc || '無描述'}
-                </p>
-              </div>
-
-              <button
-                onClick={() => handleVote(wish.id)}
-                disabled={votedIds.has(wish.id) || wish.isTemp}
-                className={`flex items-center gap-2 px-4 py-2 rounded-lg text-xs font-bold transition-all shrink-0
-                ${votedIds.has(wish.id) || wish.isTemp
-                    ? 'bg-slate-800 text-slate-600 cursor-not-allowed'
-                    : 'bg-indigo-600 hover:bg-indigo-500 text-white shadow-lg shadow-indigo-500/20'
-                  }`}
-              >
-                {wish.isTemp ? '處理中' : votedIds.has(wish.id) ? '已推' : '推一波'}
-              </button>
-            </div>
-          ))}
+            );
+          })}
       </section>
 
       {wishes.length === 0 && !loading && (
@@ -334,15 +406,21 @@ function App() {
               <div className="flex gap-2">
                 <button
                   onClick={() => setIsModalOpen(false)}
-                  className="flex-1 py-3 bg-slate-800 rounded-lg font-bold text-sm"
+                  disabled={isSaving}
+                  className={`flex-1 py-3 rounded-lg font-bold text-sm ${
+                    isSaving ? 'bg-slate-700 text-slate-500 cursor-not-allowed' : 'bg-slate-800 hover:bg-slate-700'
+                  }`}
                 >
                   取消
                 </button>
                 <button
                   onClick={handleUpdate}
-                  className="flex-1 py-3 bg-indigo-600 rounded-lg font-bold text-sm text-white hover:bg-indigo-500"
+                  disabled={isSaving}
+                  className={`flex-1 py-3 rounded-lg font-bold text-sm text-white ${
+                    isSaving ? 'bg-indigo-800 cursor-not-allowed' : 'bg-indigo-600 hover:bg-indigo-500'
+                  }`}
                 >
-                  儲存
+                  {isSaving ? '儲存中...' : '儲存'}
                 </button>
               </div>
             </div>
