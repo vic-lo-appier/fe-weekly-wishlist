@@ -36,23 +36,26 @@ function getWishes() {
 }
 
 /**
- * 編輯功能：對準 B 欄與 C 欄
+ * 編輯功能：透過 UUID 找到列，更新 B 欄與 C 欄
  */
 function updateWish(updateData) {
   const sheet =
     SpreadsheetApp.getActiveSpreadsheet().getSheetByName(WISH_SHEET_NAME);
   const userEmail = Session.getActiveUser().getEmail();
 
+  // 透過 UUID 找到對應的列
+  const rowIndex = findRowById(sheet, updateData.id);
+
   // 推薦者在 D 欄 (第 4 欄)
-  const creatorEmail = sheet.getRange(updateData.id, 4).getValue();
+  const creatorEmail = sheet.getRange(rowIndex, 4).getValue();
 
   if (userEmail !== creatorEmail && userEmail !== ADMIN_EMAIL) {
     throw new Error('只有原推薦者可以編輯。');
   }
 
   // 更新主題名稱 (B 欄 = 2) 與 想了解的點 (C 欄 = 3)
-  sheet.getRange(updateData.id, 2).setValue(updateData.title);
-  sheet.getRange(updateData.id, 3).setValue(updateData.desc);
+  sheet.getRange(rowIndex, 2).setValue(updateData.title);
+  sheet.getRange(rowIndex, 3).setValue(updateData.desc);
 
   return '更新成功！';
 }
