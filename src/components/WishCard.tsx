@@ -82,9 +82,7 @@ export default function WishCard({
               ? 'text-red-400 text-xl'
               : wish.isTemp
                 ? 'text-slate-500 text-xl'
-                : isVoted
-                  ? `${voteStyle.color} ${voteStyle.size} ${voteStyle.glow}`
-                  : `${voteStyle.color} ${voteStyle.size} ${voteStyle.glow}`
+                : `${voteStyle.color} ${voteStyle.size} ${voteStyle.glow}`
           }`}
         >
           {isDeleting ? '🗑️' : wish.isTemp ? '⏳' : `${voteStyle.badge}${wish.votes}`}
@@ -106,16 +104,6 @@ export default function WishCard({
           >
             {wish.title}
           </h3>
-          {wish.isTemp && (
-            <span className="text-[10px] text-yellow-400 bg-yellow-400/10 px-2 py-0.5 rounded-full whitespace-nowrap shrink-0">
-              送出中...
-            </span>
-          )}
-          {isDeleting && (
-            <span className="text-[10px] text-red-400 bg-red-400/10 px-2 py-0.5 rounded-full whitespace-nowrap shrink-0">
-              刪除中...
-            </span>
-          )}
         </div>
         <p className="text-[11px] text-slate-500 line-clamp-2 mt-1">
           {wish.desc || '無描述'}
@@ -159,15 +147,11 @@ export default function WishCard({
               : 'bg-indigo-600 hover:bg-indigo-500 text-white shadow-lg shadow-indigo-500/20'
           }`}
         >
-          {isDeleting
-            ? '刪除中'
-            : wish.isTemp
-              ? '處理中'
-              : isVoting
-                ? '投票中...'
-                : !isAdmin && isVoted
-                  ? '已推'
-                  : '推一波'}
+          {isVoting
+            ? '投票中...'
+            : !isAdmin && isVoted
+              ? '已推'
+              : '推一波'}
         </button>
       </div>
     </div>

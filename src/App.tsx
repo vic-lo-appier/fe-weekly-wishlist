@@ -1,7 +1,8 @@
 /// <reference path="./canvas-confetti.d.ts" />
 import { useState, useEffect } from 'react';
 import confetti from 'canvas-confetti';
-import type { Wish, ToastState } from './types';
+import type { Wish } from './types';
+import { useToast } from './hooks/useToast';
 import {
   Toast,
   WishForm,
@@ -16,19 +17,12 @@ function App() {
   const [deleteTarget, setDeleteTarget] = useState<Wish | null>(null);
   const [editingWish, setEditingWish] = useState<Wish | null>(null);
   const [loading, setLoading] = useState(true);
-  const [toast, setToast] = useState<ToastState | null>(null);
-  const [isModalOpen, setIsModalOpen] = useState(false);
-  const [newWish, setNewWish] = useState({ title: '', desc: '' });
+  const { toast, showToast } = useToast();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [deletingIds, setDeletingIds] = useState<Set<string>>(new Set());
   const [votingIds, setVotingIds] = useState<Set<string>>(new Set());
   const [isSaving, setIsSaving] = useState(false);
   const [isAdmin, setIsAdmin] = useState(false);
-
-  const showToast = (msg: string, type: 'success' | 'error' = 'success') => {
-    setToast({ msg, type });
-    setTimeout(() => setToast(null), 3000);
-  };
 
   useEffect(() => {
     loadData();
@@ -58,7 +52,6 @@ function App() {
     if (isSubmitting || !title.trim()) return;
 
     setIsSubmitting(true);
-    setNewWish({ title: '', desc: '' });
 
     const uuid = crypto.randomUUID();
     const newWishData: Wish = {
@@ -150,7 +143,6 @@ function App() {
     google.script.run
       .withSuccessHandler(() => {
         setIsSaving(false);
-        setIsModalOpen(false);
         setEditingWish(null);
         showToast('更新成功');
       })
@@ -218,12 +210,8 @@ function App() {
 
       {/* 新增表單 */}
       <WishForm
-        title={newWish.title}
-        desc={newWish.desc}
         isSubmitting={isSubmitting}
-        onTitleChange={(value) => setNewWish({ ...newWish, title: value })}
-        onDescChange={(value) => setNewWish({ ...newWish, desc: value })}
-        onSubmit={() => handleAddWish(newWish.title, newWish.desc)}
+        onSubmit={handleAddWish}
       />
 
       {/* 載入中狀態 */}
@@ -256,10 +244,7 @@ function App() {
                 isVoting={votingIds.has(wish.id)}
                 isAdmin={isAdmin}
                 onVote={() => handleVote(wish.id)}
-                onEdit={() => {
-                  setEditingWish(wish);
-                  setIsModalOpen(true);
-                }}
+                onEdit={() => setEditingWish(wish)}
                 onDelete={() => setDeleteTarget(wish)}
               />
             ))}
@@ -274,18 +259,18 @@ function App() {
       )}
 
       {/* 編輯 Modal */}
-      {isModalOpen && (
+      {editingWish && (
         <EditModal
           wish={editingWish}
           isSaving={isSaving}
           onTitleChange={(value) =>
-            editingWish && setEditingWish({ ...editingWish, title: value })
+            setEditingWish({ ...editingWish, title: value })
           }
           onDescChange={(value) =>
-            editingWish && setEditingWish({ ...editingWish, desc: value })
+            setEditingWish({ ...editingWish, desc: value })
           }
           onSave={handleUpdate}
-          onCancel={() => setIsModalOpen(false)}
+          onCancel={() => setEditingWish(null)}
         />
       )}
 
