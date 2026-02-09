@@ -191,7 +191,7 @@ function App() {
             FE Weekly <span className="text-white">許願池</span>
           </h1>
           <div className={`text-xs text-indigo-400 ${loading ? 'animate-pulse' : 'invisible'}`}>
-            同步中...
+            Loading...
           </div>
         </div>
         <p className="text-slate-500 text-sm mt-1">
