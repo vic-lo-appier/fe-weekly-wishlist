@@ -185,27 +185,18 @@ function App() {
   return (
     <div className="max-w-2xl mx-auto p-4 md:p-8 text-slate-200">
       {/* Header */}
-      <header className="mb-8 flex justify-between items-end">
-        <div>
+      <header className="mb-8">
+        <div className="flex items-center justify-between">
           <h1 className="text-4xl font-black text-blue-400">
             FE Weekly <span className="text-white">許願池</span>
           </h1>
-          <p className="text-slate-500 text-sm mt-1">
-            提出你想聽的分享主題，一起投票決定！
-          </p>
+          <div className={`text-xs text-indigo-400 ${loading ? 'animate-pulse' : 'invisible'}`}>
+            同步中...
+          </div>
         </div>
-        <div className="flex flex-col items-end gap-1">
-          {isAdmin && (
-            <span className="text-[10px] text-amber-400 bg-amber-400/10 px-2 py-0.5 rounded-full">
-              🔧 Admin Mode
-            </span>
-          )}
-          {loading && (
-            <div className="text-xs text-indigo-400 animate-pulse">
-              同步中...
-            </div>
-          )}
-        </div>
+        <p className="text-slate-500 text-sm mt-1">
+          提出你想聽的分享主題，一起投票決定！
+        </p>
       </header>
 
       {/* 新增表單 */}

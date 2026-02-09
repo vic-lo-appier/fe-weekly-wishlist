@@ -15,8 +15,7 @@ interface WishCardProps {
  * 根據票數取得對應的樣式（適用於約 16 人的團隊）
  */
 function getVoteStyle(votes: number) {
-  if (votes >= 8) {
-    // 超過一半人投票 → 超級熱門
+  if (votes > 8) {
     return {
       color: 'text-amber-400',
       size: 'text-2xl',
@@ -25,24 +24,22 @@ function getVoteStyle(votes: number) {
       label: 'HOT',
     };
   }
-  if (votes >= 5) {
-    // 約 1/3 人投票 → 熱門
+  if (votes >= 6) {
+    return {
+      color: 'text-orange-400',
+      size: 'text-xl',
+      glow: 'drop-shadow-[0_0_6px_rgba(251,146,60,0.4)]',
+      badge: '💥',
+      label: 'Hot',
+    };
+  }
+  if (votes >= 3) {
     return {
       color: 'text-purple-400',
       size: 'text-xl',
       glow: 'drop-shadow-[0_0_4px_rgba(192,132,252,0.4)]',
       badge: '⭐',
       label: 'Popular',
-    };
-  }
-  if (votes >= 3) {
-    // 有點關注
-    return {
-      color: 'text-indigo-400',
-      size: 'text-xl',
-      glow: '',
-      badge: '',
-      label: 'Votes',
     };
   }
   return {
@@ -75,9 +72,9 @@ export default function WishCard({
       } ${isDeleting ? 'opacity-50 bg-red-500/5 animate-pulse' : ''}`}
     >
       {/* 票數區域 */}
-      <div className="w-14 text-center border-r border-white/10 pr-2 shrink-0">
+      <div className="min-w-16 text-center border-r border-white/10 pr-3 shrink-0">
         <span
-          className={`block font-black transition-all ${
+          className={`block font-black whitespace-nowrap transition-all ${
             isDeleting
               ? 'text-red-400 text-xl'
               : wish.isTemp
@@ -147,11 +144,23 @@ export default function WishCard({
               : 'bg-indigo-600 hover:bg-indigo-500 text-white shadow-lg shadow-indigo-500/20'
           }`}
         >
-          {isVoting
-            ? '投票中...'
-            : !isAdmin && isVoted
-              ? '已推'
-              : '推一波'}
+          {isVoting ? (
+            '投票中...'
+          ) : !isAdmin && isVoted ? (
+            <>
+              <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="currentColor">
+                <path d="M2 20h2c.55 0 1-.45 1-1v-9c0-.55-.45-1-1-1H2v11zm19.83-7.12c.11-.25.17-.52.17-.8V11c0-1.1-.9-2-2-2h-5.5l.92-4.65c.05-.22.02-.46-.08-.66a4.8 4.8 0 00-.88-1.22L14 2 7.59 8.41C7.21 8.79 7 9.3 7 9.83v7.84A2.33 2.33 0 009.34 20h8.11c.7 0 1.36-.37 1.72-.97l2.66-6.15z" />
+              </svg>
+              已推
+            </>
+          ) : (
+            <>
+              <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <path d="M14 9V5a3 3 0 00-3-3l-4 9v11h11.28a2 2 0 002-1.7l1.38-9a2 2 0 00-2-2.3H14zM7 22H4a2 2 0 01-2-2v-7a2 2 0 012-2h3" />
+              </svg>
+              推
+            </>
+          )}
         </button>
       </div>
     </div>
