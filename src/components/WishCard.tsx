@@ -95,6 +95,7 @@ export default function WishCard({
       <div className="flex-grow min-w-0">
         <div className="flex items-start gap-2">
           <h3
+            title={wish.title}
             className={`font-bold text-sm line-clamp-2 flex-grow ${
               isDeleting ? 'text-slate-400 line-through' : 'text-slate-200'
             }`}
@@ -102,7 +103,7 @@ export default function WishCard({
             {wish.title}
           </h3>
         </div>
-        <p className="text-[11px] text-slate-500 line-clamp-2 mt-1">
+        <p title={wish.desc} className="text-xs text-slate-400 line-clamp-2 mt-1">
           {wish.desc || '無描述'}
         </p>
       </div>
